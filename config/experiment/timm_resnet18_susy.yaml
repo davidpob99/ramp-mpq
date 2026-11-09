@@ -1,0 +1,18 @@
+# @package _global_
+
+defaults:
+  - /data: susy_classification
+  - /model: timm_resnet_classification
+
+image_size: 224
+onnx_file: ${paths.root_dir}/models/susy-classification/fp32/timm_resnet18/model.onnx
+pytorch_file: ${paths.root_dir}/models/susy-classification/fp32/timm_resnet18/model.pth
+
+# Restricts the ranked layers to the nodes that ONNX Runtime did not fuse away,
+# using the node list from the paper's Cortex-A76 traces. Without it ConvNeXt
+# ranks 95 layers instead of the published 77, because the mlp/fc1 bias Adds
+# -- fused into their MatMul in FP32 -- come back as separate rows.
+# Hardware-dependent: another CPU or ORT version fuses differently. Set to null
+# to rank every layer.
+recall_top_k:
+  profiling_filter: ${paths.root_dir}/data/profiling/resnet18_cortex_a76.csv

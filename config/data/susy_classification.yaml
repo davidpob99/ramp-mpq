@@ -1,0 +1,48 @@
+_target_: src.data.ImageFolderDataModule.ImageFolderDataModule
+batch: 32
+num_workers: 6
+pin_memory: true
+root_train: "${paths.data_dir}/SuSy-Dataset/data/train"
+root_val: "${paths.data_dir}/SuSy-Dataset/data/val"
+root_test: "${paths.data_dir}/SuSy-Dataset/data/test"
+
+transform_train:
+  _target_: torchvision.transforms.v2.Compose
+  transforms:
+    - _target_: torchvision.transforms.v2.RandomCrop
+      size: ${oc.select:image_size,224}
+    - _target_: torchvision.transforms.v2.RandomHorizontalFlip
+      p: 0.5
+    - _target_: torchvision.transforms.v2.ToImage
+    - _target_: torchvision.transforms.v2.ToDtype
+      dtype:
+        _target_: torch.__dict__.get
+        _args_:
+          - float32
+      scale: true
+
+transform_val:
+  _target_: torchvision.transforms.v2.Compose
+  transforms:
+    - _target_: torchvision.transforms.v2.CenterCrop
+      size: ${oc.select:image_size,224}
+    - _target_: torchvision.transforms.v2.ToImage
+    - _target_: torchvision.transforms.v2.ToDtype
+      dtype:
+        _target_: torch.__dict__.get
+        _args_:
+          - float32
+      scale: true
+
+transform_test:
+  _target_: torchvision.transforms.v2.Compose
+  transforms:
+    - _target_: torchvision.transforms.v2.CenterCrop
+      size: ${oc.select:image_size,224}
+    - _target_: torchvision.transforms.v2.ToImage
+    - _target_: torchvision.transforms.v2.ToDtype
+      dtype:
+        _target_: torch.__dict__.get
+        _args_:
+          - float32
+      scale: true

@@ -1,0 +1,19 @@
+_target_: src.models.TimmClassification.TimmClassification
+model_name: "efficientnet_b0"
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.01
+  eps: 1e-8
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.LinearLR
+  _partial_: true
+  start_factor: 0.001
+  total_iters: 5
+
+# Warmup de LR (por épocas). 0 = desactivado
+warmup_epochs: 3
+warmup_start_factor: 0.1

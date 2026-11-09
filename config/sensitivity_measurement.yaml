@@ -1,0 +1,90 @@
+defaults:
+  - experiment: timm_convnext_tiny_susy
+  - paths: local
+  - logger: wandb
+  - _self_
+
+use_gpu: false
+# Test images the whole sweep runs on, as a number of batches. 1000 is for
+# iterating; the accuracy ground truth needs the whole test set (null), which
+# takes hours -- with 1000 images the standard error of the accuracy (~1.5
+# points on ResNet-18) is as large as the spread across layers.
+max_test_batches: 1000
+# Per-node OAT models are full copies of the network (~model size each), so
+# they are deleted right after being measured. Set true only to inspect one.
+keep_node_models: false
+warmup_runs: 10
+seed: 42
+data:
+  batch: 1
+  num_workers: 4
+  pin_memory: false
+
+logger:
+  wandb:
+    entity: ${oc.env:WANDB_ENTITY,null}
+    project: sensitivity_measurement
+    group: null
+
+steps:
+  analyze_weights: true
+  analyze_weights_pytorch: true
+  analyze_oat: true
+  # Per-node FP32 and INT8 kernel times (dur_s_*) of the device this runs on.
+  profile_layers: true
+  recall_top_k: true
+
+# Analyze weights configuration
+analyze_weights:
+  max_samples_per_layer: 2048
+
+# Recall @ top-K of each proxy metric against the accuracy-drop ground truth.
+# The boolean is the direction: true = a HIGHER value means a MORE sensitive
+# layer. Getting it wrong is silent, so SNR-like metrics must be false.
+recall_top_k:
+  ground_truth: acc_drop
+  fractions: [ 0.10, 0.20, 0.30 ]
+  predictors:
+    jsd: true
+    kl: true
+    mse: true
+    mae: true
+    nrmse: true
+    cos_dis: true
+    snr: false
+    estimated_sqnr: false
+    std: true
+    range_ratio: true
+    channel_range_cv: true
+    hawqv2_score: true
+    value_count: true
+
+# Sensitivity metrics
+hessian_trace:
+  enabled: true
+
+quantization:
+  type: "static"
+  preprocess: true
+  preprocess_args:
+    auto_merge: true
+  quantization_args:
+    weight_type:
+      _target_: hydra.utils.get_object
+      path: onnxruntime.quantization.quant_utils.QuantType.QInt8
+    quant_format:
+      _target_: hydra.utils.get_object
+      path: onnxruntime.quantization.quant_utils.QuantFormat.QDQ
+    op_types_to_quantize: ${oc.select:quantizable_ops,[]}
+  # For static quantization, provide calibration data
+  calibration_data:
+    folder_path: ${paths.data_dir}/SuSy-Dataset/data/train
+    size: [ "${oc.select:image_size,224}", "${oc.select:image_size,224}" ]  # [width, height]
+    input_name: "input"
+    max_images: 1000
+    # Fixes which images calibrate; with MinMax this makes the ranges reproducible.
+    seed: ${seed}
+
+session_options:
+  graph_optimization_level: "ORT_ENABLE_ALL"
+  intra_op_thread_affinities: null

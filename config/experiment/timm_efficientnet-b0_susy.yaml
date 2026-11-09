@@ -1,0 +1,29 @@
+# @package _global_
+
+defaults:
+  - /data: susy_classification
+  - /model: timm_efficientnet_classification
+
+image_size: 224
+onnx_file: ${paths.root_dir}/models/susy-classification/fp32/timm_efficientnet-b0/model.onnx
+pytorch_file: ${paths.root_dir}/models/susy-classification/fp32/timm_efficientnet-b0/model.pth
+
+sensitivity:
+  # from_run must be a W&B path (entity/project/run_id) holding a
+  # sensitivity_analysis_results.json artifact. The old MLflow id
+  # (5bde011c4cc34b3a8cee35993bbcbc2f) is not usable by the W&B API.
+  from_run: null
+
+limpq:
+  pkl_file: ${paths.root_dir}/external/limpq/quantization_search/indicators/importance_indicators_efficientnet_b0_susy.pkl
+  indicators_pretraining:
+    config_yaml: config_efficientnet-b0_susy.yaml
+  ilp_mpq_search:
+    model: efficientnet_b0
+    cr: 0
+
+# No profiling filter: the paper ranked EfficientNet-B0 on all 82 layers that
+# survive the weight and HAWQ-V2 joins. The Cortex-A76 filter would cut that to
+# 68 and break comparability with the published column.
+recall_top_k:
+  profiling_filter: null

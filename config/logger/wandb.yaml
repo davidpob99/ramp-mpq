@@ -1,0 +1,5 @@
+wandb:
+  project: ramp-mpq
+  entity: ${oc.env:WANDB_ENTITY,null}
+  mode: ${oc.env:WANDB_MODE,online}
+  group: null

@@ -1,0 +1,24 @@
+# @package _global_
+
+defaults:
+  - /data: susy_classification
+  - /model: timm_tinyvit_classification
+
+image_size: 224
+onnx_file: ${paths.root_dir}/models/susy-classification/fp32/timm_tinyvit/model.onnx
+pytorch_file: ${paths.root_dir}/models/susy-classification/fp32/timm_tinyvit/model.pth
+
+# Read from the root by quantization.quantization_args.op_types_to_quantize.
+# Without it the whole ORT registry is swept and every Linear's bias Add comes
+# back as its own row next to its MatMul: 98 rows for 68 PyTorch modules. The
+# paper's TinyViT profile declared exactly these three op types.
+quantizable_ops:
+  - Gemm
+  - MatMul
+  - Conv
+
+# Restricts the ranked layers to the nodes ONNX Runtime did not fuse away, from
+# the paper's Cortex-A76 traces. With the op types above it does not change the
+# TinyViT population (68 either way); kept for parity with the paper's notebook.
+recall_top_k:
+  profiling_filter: ${paths.root_dir}/data/profiling/tinyvit_cortex_a76.csv

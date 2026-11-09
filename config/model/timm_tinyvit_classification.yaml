@@ -1,0 +1,18 @@
+_target_: src.models.TimmClassification.TimmClassification
+model_name: "tiny_vit_21m_224.in1k"
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.05
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: ${trainer.max_epochs}
+  eta_min: 0.00001
+
+# Warmup de LR (por épocas). 0 = desactivado
+warmup_epochs: 10
+warmup_start_factor: 0.01

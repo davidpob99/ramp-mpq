@@ -1,0 +1,8 @@
+/models/
+/data/SuSy-Dataset/
+__pycache__/
+.idea/
+outputs/
+wandb/
+
+.env

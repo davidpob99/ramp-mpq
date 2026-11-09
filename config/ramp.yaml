@@ -1,0 +1,86 @@
+defaults:
+  - experiment: timm_convnext_tiny_susy
+  - paths: local
+  - logger: wandb
+  - _self_
+
+use_gpu: false
+max_test_batches: null
+warmup_runs: 10
+seed: 42
+# As in the paper's evaluation: one image at a time, decoded in the main
+# process right before its inference. Workers would decode in parallel and
+# compete with ONNX Runtime for the CPU, changing the measured latency.
+data:
+  batch: 1
+  num_workers: 0
+  pin_memory: false
+
+logger:
+  wandb:
+    entity: ${oc.env:WANDB_ENTITY,null}
+    project: ramp
+    group: null
+
+steps:
+  base: true
+  quantize_all: true
+  final_results: true
+
+# Per-layer table written by the recall_top_k step of sensitivity_measurement.
+sensitivity_table: ???
+
+final_results:
+  metrics:
+    jsd: true
+#    hawqv2_score: true
+#    std: true
+  latency_metric: jsd
+  # Which latency decides whether quantizing a layer pays off:
+  # <latency_measure>_fp32 / <latency_measure>_int8 must be > 1. The paper uses
+  # dur_s, each node's own kernel time from the ORT profiling traces of the
+  # target device: present in the paper's tables (data/paper/sensitivity_tables/)
+  # and in the ones written by this repo's sensitivity_measurement when its
+  # profile_layers step ran. `latency`
+  # is the whole-model OAT latency instead.
+  latency_measure: dur_s
+
+# A sweep writes one quantized ONNX per configuration, each the size of the model.
+# Quantized ONNX of every configuration to S3, logged in W&B as a reference
+# artifact (W&B keeps only paths and checksums). upload.s3_uri=null disables it. Credentials
+# come from ~/.aws/credentials, never from here.
+upload:
+  s3_uri: null
+  # From .env (AWS_S3_ENDPOINT_URL), like the credentials.
+  endpoint_url: ${oc.env:AWS_S3_ENDPOINT_URL,null}
+
+clean_up:
+  delete_onnx_files: false
+
+quantization:
+  type: "static"
+  preprocess: true
+  preprocess_args:
+    auto_merge: true
+  quantization_args:
+    weight_type:
+      _target_: hydra.utils.get_object
+      path: onnxruntime.quantization.quant_utils.QuantType.QInt8
+    quant_format:
+      _target_: hydra.utils.get_object
+      path: onnxruntime.quantization.quant_utils.QuantFormat.QDQ
+    op_types_to_quantize: ${oc.select:quantizable_ops,[]}
+  calibration_data:
+    folder_path: ${paths.data_dir}/SuSy-Dataset/data/train
+    size: [ "${oc.select:image_size,224}", "${oc.select:image_size,224}" ]
+    input_name: "input"
+    max_images: 1000
+    # Fixes which images calibrate; with MinMax this makes the ranges reproducible.
+    seed: ${seed}
+
+# The paper's evaluation sessions
+session_options:
+  graph_optimization_level: "ORT_ENABLE_ALL"
+  intra_op_num_threads: 8
+  inter_op_num_threads: 1
+  intra_op_thread_affinities: null

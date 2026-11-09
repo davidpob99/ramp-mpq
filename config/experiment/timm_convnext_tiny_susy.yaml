@@ -1,0 +1,30 @@
+# @package _global_
+# Ties together the four things that must move as a unit: model, dataset,
+# trained checkpoints and input resolution
+
+defaults:
+  - /data: susy_classification
+  - /model: timm_convnext_classification
+
+image_size: 224
+onnx_file: ${paths.root_dir}/models/susy-classification/fp32/timm_convnext_tiny/model.onnx
+pytorch_file: ${paths.root_dir}/models/susy-classification/fp32/timm_convnext_tiny/model.pth
+
+quantizable_ops:
+  - Conv
+  - Gemm
+  - MatMul
+  - Conv
+  - LayerNormalization
+  - Add
+  - Mul
+  - GlobalAveragePool
+
+# Restricts the ranked layers to the nodes that ONNX Runtime did not fuse away,
+# using the node list from the paper's Cortex-A76 traces. Without it ConvNeXt
+# ranks 95 layers instead of the published 77, because the mlp/fc1 bias Adds
+# -- fused into their MatMul in FP32 -- come back as separate rows.
+# Hardware-dependent: another CPU or ORT version fuses differently. Set to null
+# to rank every layer.
+recall_top_k:
+  profiling_filter: ${paths.root_dir}/data/profiling/convnext_tiny_cortex_a76.csv
